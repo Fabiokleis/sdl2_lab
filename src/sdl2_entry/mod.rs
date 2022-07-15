@@ -4,27 +4,27 @@ use std::env;
 use std::path::Path;
 use std::time::Duration;
 
+use crate::components;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::render::TextureCreator;
 use sdl2::render::WindowCanvas;
 use sdl2::video::WindowContext;
 use sdl2::{event::Event, rect::Point, rect::Rect};
+use specs::WorldExt;
+use specs::{World, Join};
 
-mod texture_manager;
 /// sdl2 bindings mods
-mod utils;
+mod texture_manager;
 
+use crate::engine::utils;
 /// engine conf
 use crate::engine::GameSkel;
-
-use crate::components;
-/// ecs
-use specs::{World, WorldExt};
 
 /// consts
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 600;
+const ASSETS_PATH: &'static str = "/home/urameshi/sdl2_rust/sdl2_lab/assets/";
 
 const BOO_WIDTH: u32 = 150;
 const BOO_HEIGHT: u32 = 200;
@@ -36,36 +36,42 @@ fn render(
     texture_manager: &mut texture_manager::TextureManager<WindowContext>,
     texture_creator: &TextureCreator<WindowContext>,
     font: &sdl2::ttf::Font,
+    ecs: &World,
 ) -> Result<(), String> {
-    let color = Color::RGB(60, 60, 60);
+    let color = Color::RGB(0, 0, 0);
     canvas.set_draw_color(color);
     canvas.clear();
 
-    let src = Rect::new(0, 0, BOO_WIDTH, BOO_HEIGHT);
-    let x = SCREEN_WIDTH as i32 / 2;
-    let y = SCREEN_HEIGHT as i32 / 2;
+    let positions = ecs.read_storage::<components::Position>();
+    let renderables = ecs.read_storage::<components::Renderable>();
 
-    let dest = Rect::new(
-        x - (OUT_BOO_WIDTH / 2) as i32,
-        y - (OUT_BOO_HEIGHT / 2) as i32,
-        OUT_BOO_WIDTH,
-        OUT_BOO_HEIGHT,
-    );
-    let center = Point::new(OUT_BOO_WIDTH as i32 / 2, OUT_BOO_HEIGHT as i32 / 2);
-    let f = env::current_dir()
-        .unwrap()
-        .join("assets/imgs/fishingboo.png");
+    for (pos, renderable) in (&positions, &renderables).join() {
+        let src = Rect::new(0, 0, renderable.src_width, renderable.src_height);
+        let x = pos.x as i32;
+        let y = pos.y as i32;
+        let dest = Rect::new(
+            x - (renderable.dest_width as i32 / 2),
+            y - (renderable.dest_height as i32 / 2),
+            renderable.dest_width,
+            renderable.dest_height,
+        );
 
-    let texture = texture_manager.load(f.to_str().unwrap()).unwrap();
-    canvas
-        .copy_ex(&texture, src, dest, 0.0, center, true, false)
-        .unwrap();
+        let center = Point::new(
+            renderable.dest_width as i32 / 2,
+            renderable.dest_height as i32 / 2,
+        );
+        let path = Path::new(ASSETS_PATH).join(Path::new(&renderable.texture_name));
+        let texture = texture_manager.load(&path.to_str().unwrap())?;
+
+        canvas.copy_ex(&texture, src, dest, pos.rot, center, false, false)?;
+    }
+
     canvas.present();
     Ok(())
 }
 
 /// run sdl2 with a game instance
-pub fn run(game: GameSkel) {
+pub fn run(mut game: GameSkel) {
     let sdl_context = sdl2::init().expect("Failed to initialize sdl2!");
 
     let mut canvas = {
@@ -88,15 +94,7 @@ pub fn run(game: GameSkel) {
     let texture_creator = canvas.texture_creator();
     let mut texture_manager = texture_manager::TextureManager::new(&texture_creator);
 
-    // load image
-    let f = env::current_dir()
-        .unwrap()
-        .join("assets/imgs/fishingboo.png");
-    texture_manager
-        .load(&f.to_str().unwrap())
-        .expect("Failed to load image file!");
-
-    // loading fonts
+   // loading fonts
     let ttf_ctxt = sdl2::ttf::init().expect("Failed to initialize font!");
     let p = env::current_dir()
         .unwrap()
@@ -108,8 +106,13 @@ pub fn run(game: GameSkel) {
         .expect("Failed to load font!");
     font.set_style(sdl2::ttf::FontStyle::BOLD);
 
+    
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut key_manager: HashMap<String, bool> = HashMap::new();
+
+    // game
+    game.setup();
+    game.load_world();
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -133,8 +136,9 @@ pub fn run(game: GameSkel) {
                 },
                 _ => {}
             }
-
-            render(&mut canvas, &mut texture_manager, &texture_creator, &font)
+            
+            game.update(&mut key_manager);
+            render(&mut canvas, &mut texture_manager, &texture_creator, &font, &game.ecs())
                 .expect("Failed to render!");
             std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
