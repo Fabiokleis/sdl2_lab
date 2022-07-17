@@ -143,6 +143,7 @@ pub fn run() {
         .with(engine::asteroid::AsteroidMover, "asteroid_mover", &[])
         .with(engine::asteroid::AsteroidCollider, "asteroid_collider", &[])
         .with(engine::missile::MissileMove, "missile_mover", &[])
+        .with(engine::missile::MissileStriker, "missile_striker", &[])
         .build();
     engine::load_world(&mut game.ecs);
 

@@ -23,8 +23,20 @@ pub struct GameSkel {
 
 pub fn update(ecs: &mut World, key_manager: &mut HashMap<String, bool>) {
     let mut must_reload_world = false;
+    let mut current_player_position = Position {
+        x: 0.0,
+        y: 0.0,
+        rot: 0.0,
+    };
     {
         let player = ecs.read_storage::<Player>();
+        let positions = ecs.read_storage::<Position>();
+
+        for (pos, player) in (&positions, &player).join() {
+            current_player_position.x = pos.x;
+            current_player_position.y = pos.y;
+        }
+
         if player.join().count() < 1 {
             must_reload_world = true;
         }
@@ -33,6 +45,46 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String, bool>) {
     if must_reload_world {
         ecs.delete_all();
         load_world(ecs);
+    }
+
+    let mut must_create_asteroid = false;
+    {
+        let asteroids = ecs.read_storage::<Asteroid>();
+        if asteroids.join().count() < 1 {
+            must_create_asteroid = true;
+        }
+    }
+
+    if must_create_asteroid {
+        if current_player_position.x > (SCREEN_WIDTH / 2).into()
+            && current_player_position.y < (SCREEN_HEIGHT / 2).into()
+        {
+            current_player_position.x = SCREEN_WIDTH as f64 / 4.0;
+            current_player_position.y = SCREEN_HEIGHT as f64 / 4.0;
+            current_player_position.rot = 225.0;
+        } else if current_player_position.x < (SCREEN_WIDTH / 2).into()
+            && current_player_position.y < (SCREEN_HEIGHT / 2).into()
+        {
+            current_player_position.x = SCREEN_WIDTH as f64 - (SCREEN_WIDTH as f64 / 4.0);
+            current_player_position.y = SCREEN_HEIGHT as f64 - (SCREEN_HEIGHT as f64 / 4.0);
+            current_player_position.rot = 135.0;
+        } else if current_player_position.x > (SCREEN_WIDTH / 2).into()
+            && current_player_position.y < (SCREEN_HEIGHT / 2).into() 
+        {
+            current_player_position.x = SCREEN_WIDTH as f64 / 4.0;
+            current_player_position.y = SCREEN_HEIGHT as f64 / 4.0;
+            current_player_position.rot = 315.0;
+        } else if current_player_position.x < (SCREEN_WIDTH / 2).into()
+            && current_player_position.y > (SCREEN_HEIGHT / 2).into()
+        {
+            current_player_position.x = SCREEN_WIDTH as f64 - (SCREEN_WIDTH as f64 / 4.0);
+            current_player_position.y = SCREEN_HEIGHT as f64 / 4.0;
+            current_player_position.rot = 45.0;
+        }
+
+
+
+        create_asteroid(ecs, current_player_position);
     }
 
     let mut player_pos = Position {
@@ -143,6 +195,26 @@ fn fire_missile(ecs: &mut World, postion: Position) {
         .build();
 }
 
+fn create_asteroid(ecs: &mut World, postion: Position) {
+    ecs.create_entity()
+        .with(postion)
+        .with(Renderable {
+            texture_name: String::from("imgs/asteroid.png"),
+            src_width: 100,
+            src_height: 100,
+            dest_width: 50,
+            dest_height: 50,
+            frame: 0,
+            total_frames: 1,
+            rot: 0.0,
+        })
+        .with(Asteroid {
+            speed: 2.5,
+            rot_speed: 0.5,
+        })
+        .build();
+}
+
 pub fn load_world(ecs: &mut World) {
     ecs.create_entity()
         .with(Position {
@@ -165,26 +237,5 @@ pub fn load_world(ecs: &mut World) {
             cur_speed: Vector2D::new(0.0, 0.0),
         })
         .build();
-
-    ecs.create_entity()
-        .with(Position {
-            x: 480.0,
-            y: 235.0,
-            rot: 45.0,
-        })
-        .with(Renderable {
-            texture_name: String::from("imgs/asteroid.png"),
-            src_width: 100,
-            src_height: 100,
-            dest_width: 50,
-            dest_height: 50,
-            frame: 0,
-            total_frames: 1,
-            rot: 0.0,
-        })
-        .with(Asteroid {
-            speed: 2.5,
-            rot_speed: 0.5,
-        })
-        .build();
+    create_asteroid(ecs, Position { x: 400.0, y: 235.0, rot: 45.0 });
 }
