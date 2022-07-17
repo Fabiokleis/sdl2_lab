@@ -1,7 +1,9 @@
 use specs::prelude::*;
 use specs::{Entities, Join};
 
-use crate::components::{Asteroid, Missile, Player, Position, Renderable};
+use crate::components::{
+    Asteroid, Missile, PendingAsteroid, Player, Position, Renderable,
+};
 
 use super::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
@@ -53,6 +55,7 @@ impl<'a> System<'a> for MissileStriker {
 
     fn run(&mut self, data: Self::SystemData) {
         let (positions, rends, missiles, asteroids, _players, entities) = &data;
+        let mut asteroid_creation = Vec::<PendingAsteroid>::new();
 
         for (missile_pos, _, _, missile_entity) in (positions, rends, missiles, entities).join() {
             for (asteroid_pos, asteroid_rend, _, asteroid_entity) in
@@ -68,8 +71,42 @@ impl<'a> System<'a> for MissileStriker {
                     entities
                         .delete(asteroid_entity)
                         .expect("Could not delete asteroid!");
+
+                    let new_size = asteroid_rend.dest_width / 2;
+                    if new_size >= 25 {
+                        asteroid_creation.push(PendingAsteroid {
+                            x: asteroid_pos.x,
+                            y: asteroid_pos.y,
+                            rot: asteroid_pos.rot - 90.0,
+                            size: new_size,
+                        });
+                        asteroid_creation.push(PendingAsteroid {
+                            x: asteroid_pos.x,
+                            y: asteroid_pos.y,
+                            rot: asteroid_pos.rot + 90.0,
+                            size: new_size,
+                        });
+                    }
                 }
             }
         }
+
+        let (mut positions, mut rends, _, mut asteroids, _, entities) = data;
+        for new_asteroid in asteroid_creation {
+            let new_ast =  entities.create();
+            positions.insert(new_ast, Position { x: new_asteroid.x, y: new_asteroid.y, rot: new_asteroid.rot }).ok();
+            asteroids.insert(new_ast, Asteroid { speed: 2.5, rot_speed: 0.5 }).ok();
+            rends.insert(new_ast, Renderable {
+                texture_name: String::from("imgs/asteroid.png"),
+                src_width: 100,
+                src_height: 100,
+                dest_width: new_asteroid.size,
+                dest_height: new_asteroid.size,
+                frame: 0,
+                total_frames: 1,
+                rot: 0.0,
+            }).ok();
+        }
+
     }
 }

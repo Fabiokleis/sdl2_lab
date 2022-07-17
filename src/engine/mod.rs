@@ -84,7 +84,7 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String, bool>) {
 
 
 
-        create_asteroid(ecs, current_player_position);
+        create_asteroid(ecs, current_player_position, 100);
     }
 
     let mut player_pos = Position {
@@ -195,15 +195,15 @@ fn fire_missile(ecs: &mut World, postion: Position) {
         .build();
 }
 
-fn create_asteroid(ecs: &mut World, postion: Position) {
+fn create_asteroid(ecs: &mut World, postion: Position, asteroid_size: u32) {
     ecs.create_entity()
         .with(postion)
         .with(Renderable {
             texture_name: String::from("imgs/asteroid.png"),
             src_width: 100,
             src_height: 100,
-            dest_width: 50,
-            dest_height: 50,
+            dest_width: asteroid_size,
+            dest_height: asteroid_size,
             frame: 0,
             total_frames: 1,
             rot: 0.0,
@@ -237,5 +237,5 @@ pub fn load_world(ecs: &mut World) {
             cur_speed: Vector2D::new(0.0, 0.0),
         })
         .build();
-    create_asteroid(ecs, Position { x: 400.0, y: 235.0, rot: 45.0 });
+    create_asteroid(ecs, Position { x: 400.0, y: 235.0, rot: 45.0 }, 50);
 }
