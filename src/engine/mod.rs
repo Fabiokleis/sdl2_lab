@@ -20,6 +20,20 @@ pub struct GameSkel {
 }
 
 pub fn update(ecs: &mut World, key_manager: &mut HashMap<String, bool>) {
+    let mut must_reload_world = false;
+    {
+        let player = ecs.read_storage::<Player>();
+        if player.join().count() < 1 {
+            must_reload_world = true;
+        }
+    }
+
+    if must_reload_world {
+        ecs.delete_all();
+        load_world(ecs);
+    }
+
+
     let mut positions = ecs.write_storage::<Position>();
     let mut players = ecs.write_storage::<Player>();
     let mut renderable = ecs.write_storage::<Renderable>();

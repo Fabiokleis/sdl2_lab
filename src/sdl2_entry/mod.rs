@@ -134,6 +134,7 @@ pub fn run() {
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(engine::asteroid::AsteroidMover, "asteroid_mover", &[])
+        .with(engine::asteroid::AsteroidCollider, "asteroid_collider", &[])
         .build();
     engine::load_world(&mut game.ecs);
 
@@ -178,6 +179,7 @@ pub fn run() {
         }
         engine::update(&mut game.ecs, &mut key_manager);
         dispatcher.dispatch(&game.ecs);
+        game.ecs.maintain();
         render(
             &mut canvas,
             &mut texture_manager,
