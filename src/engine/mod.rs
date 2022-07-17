@@ -1,10 +1,11 @@
-use crate::components::{Player, Position, Renderable, Asteroid};
-use specs::{Builder, Join, World, WorldExt, Dispatcher};
+use crate::components::{Asteroid, Missile, Player, Position, Renderable};
+use specs::{Builder, Join, World, WorldExt};
 use std::collections::HashMap;
 use vector2d::Vector2D;
 
-pub mod utils;
 pub mod asteroid;
+pub mod missile;
+pub mod utils;
 
 pub const SCREEN_WIDTH: u32 = 800;
 pub const SCREEN_HEIGHT: u32 = 600;
@@ -13,6 +14,7 @@ const ROT_SPEED: f64 = 1.5;
 const PLAYER_SPEED: f64 = 4.5;
 const FRICTION: f64 = 0.99;
 const MAX_SPEED: f64 = 3.5;
+const MAX_MISSILE: usize = 3;
 
 #[derive(Default)]
 pub struct GameSkel {
@@ -33,55 +35,72 @@ pub fn update(ecs: &mut World, key_manager: &mut HashMap<String, bool>) {
         load_world(ecs);
     }
 
+    let mut player_pos = Position {
+        x: 0.0,
+        y: 0.0,
+        rot: 0.0,
+    };
+    let mut must_fire_missile = false;
+    {
+        let mut positions = ecs.write_storage::<Position>();
+        let mut players = ecs.write_storage::<Player>();
+        let mut renderable = ecs.write_storage::<Renderable>();
 
-    let mut positions = ecs.write_storage::<Position>();
-    let mut players = ecs.write_storage::<Player>();
-    let mut renderable = ecs.write_storage::<Renderable>();
+        for (player, pos, renderable) in (&mut players, &mut positions, &mut renderable).join() {
+            if utils::is_key_pressed(&key_manager, "D") {
+                pos.rot += ROT_SPEED;
+            }
+            if utils::is_key_pressed(&key_manager, "A") {
+                pos.rot -= ROT_SPEED;
+            }
 
-    for (player, pos, renderable) in (&mut players, &mut positions, &mut renderable).join() {
-        if utils::is_key_pressed(&key_manager, "D") {
-            pos.rot += ROT_SPEED;
+            update_movement(pos, player);
+
+            if utils::is_key_pressed(&key_manager, "W") {
+                let radians = pos.rot.to_radians();
+
+                let move_x = PLAYER_SPEED * radians.sin();
+                let move_y = PLAYER_SPEED * radians.cos();
+                let move_vec = Vector2D::<f64>::new(move_x, move_y);
+                player.impulse += move_vec;
+            }
+
+            if pos.rot > 360.0 {
+                pos.rot -= 360.0;
+            }
+
+            if pos.rot < 0.0 {
+                pos.rot += 360.0;
+            }
+
+            if pos.x > SCREEN_WIDTH.into() {
+                pos.x -= SCREEN_WIDTH as f64;
+            }
+            if pos.x < 0.0 {
+                pos.x += SCREEN_WIDTH as f64;
+            }
+
+            if pos.y > SCREEN_HEIGHT.into() {
+                pos.y -= SCREEN_HEIGHT as f64;
+            }
+
+            if pos.y < 0.0 {
+                pos.y += SCREEN_HEIGHT as f64;
+            }
+
+            if utils::is_key_pressed(&key_manager, " ") {
+                utils::key_up(key_manager, " ".to_string());
+                must_fire_missile = true;
+                player_pos.x = pos.x;
+                player_pos.y = pos.y;
+                player_pos.rot = pos.rot;
+            }
+            renderable.rot = pos.rot;
         }
-        if utils::is_key_pressed(&key_manager, "A") {
-            pos.rot -= ROT_SPEED;
-        }
+    }
 
-        update_movement(pos, player);
-
-        if utils::is_key_pressed(&key_manager, "W") {
-            let radians = pos.rot.to_radians();
-
-            let move_x = PLAYER_SPEED * radians.sin();
-            let move_y = PLAYER_SPEED * radians.cos();
-            let move_vec = Vector2D::<f64>::new(move_x, move_y);
-            player.impulse += move_vec;
-        }
-
-        if pos.rot > 360.0 {
-            pos.rot -= 360.0;
-        }
-
-        if pos.rot < 0.0 {
-            pos.rot += 360.0;
-        }
-
-        if pos.x > SCREEN_WIDTH.into() {
-            pos.x -= SCREEN_WIDTH as f64;
-        }
-        if pos.x < 0.0 {
-            pos.x += SCREEN_WIDTH as f64;
-        }
-
-        if pos.y > SCREEN_HEIGHT.into() {
-            pos.y -= SCREEN_HEIGHT as f64;
-        }
-
-        if pos.y < 0.0 {
-            pos.y += SCREEN_HEIGHT as f64;
-        }
-
-
-        renderable.rot = pos.rot;
+    if must_fire_missile {
+        fire_missile(ecs, player_pos);
     }
 }
 
@@ -98,6 +117,30 @@ pub fn update_movement(pos: &mut Position, player: &mut Player) {
     pos.y -= player.cur_speed.y;
 
     player.impulse = Vector2D::new(0.0, 0.0);
+}
+
+fn fire_missile(ecs: &mut World, postion: Position) {
+    {
+        let missiles = ecs.read_storage::<Missile>();
+        if missiles.count() > MAX_MISSILE - 1 {
+            return;
+        }
+    }
+
+    ecs.create_entity()
+        .with(postion)
+        .with(Renderable {
+            texture_name: String::from("imgs/missile.png"),
+            src_width: 50,
+            src_height: 100,
+            dest_width: 10,
+            dest_height: 20,
+            frame: 0,
+            total_frames: 1,
+            rot: 0.0,
+        })
+        .with(Missile { speed: 5.0 })
+        .build();
 }
 
 pub fn load_world(ecs: &mut World) {
@@ -140,7 +183,8 @@ pub fn load_world(ecs: &mut World) {
             rot: 0.0,
         })
         .with(Asteroid {
-           speed: 2.5,
-           rot_speed: 0.5,
-        }).build();
+            speed: 2.5,
+            rot_speed: 0.5,
+        })
+        .build();
 }

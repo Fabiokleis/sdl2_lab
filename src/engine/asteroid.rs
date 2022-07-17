@@ -65,7 +65,9 @@ impl<'a> System<'a> for AsteroidCollider {
                 let hyp = ((diff_x * diff_x) + (diff_y * diff_y)).sqrt();
                 if hyp < (a_rend.dest_width + p_rend.dest_width) as f64 / 2.0 {
                     println!("Player has died!");
-                    entities.delete(entity).expect("Could not delete space ship!");
+                    entities
+                        .delete(entity)
+                        .expect("Could not delete space ship!");
                 }
             }
         }

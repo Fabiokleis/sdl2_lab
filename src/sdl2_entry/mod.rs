@@ -69,7 +69,9 @@ fn render(
 /// run sdl2
 pub fn run() {
     let sdl_context = sdl2::init().expect("Failed to initialize sdl2!");
-    let video_subsys = sdl_context.video().expect("Coult not initialize video subsystem!");
+    let video_subsys = sdl_context
+        .video()
+        .expect("Coult not initialize video subsystem!");
     let window = video_subsys
         .window("sdl2_rust lab", SCREEN_WIDTH, SCREEN_HEIGHT)
         .position_centered()
@@ -103,12 +105,16 @@ pub fn run() {
     // loading images
     let ship = Path::new(ASSETS_PATH).join(Path::new("imgs/space_ship.png"));
     let asteroid = Path::new(ASSETS_PATH).join(Path::new("imgs/asteroid.png"));
+    let missile = Path::new(ASSETS_PATH).join(Path::new("imgs/missile.png"));
     texture_manager
         .load(&ship.to_str().unwrap())
         .expect("Could not load space ship image");
     texture_manager
         .load(&asteroid.to_str().unwrap())
         .expect("Could not load asteroid image");
+    texture_manager
+        .load(&missile.to_str().unwrap())
+        .expect("Could not load missile image");
 
     // loading fonts
     let ttf_ctxt = sdl2::ttf::init().expect("Failed to initialize font!");
@@ -131,10 +137,12 @@ pub fn run() {
     game.ecs.register::<components::Renderable>();
     game.ecs.register::<components::Player>();
     game.ecs.register::<components::Asteroid>();
+    game.ecs.register::<components::Missile>();
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(engine::asteroid::AsteroidMover, "asteroid_mover", &[])
         .with(engine::asteroid::AsteroidCollider, "asteroid_collider", &[])
+        .with(engine::missile::MissileMove, "missile_mover", &[])
         .build();
     engine::load_world(&mut game.ecs);
 
@@ -190,6 +198,5 @@ pub fn run() {
         .expect("Failed to render!");
 
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-
     }
 }
