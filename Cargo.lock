@@ -221,6 +221,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc_vector2d"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42ecc0faae16de3ca772d9083ce96872ab6758767deb1efb46e954dfc1d98342"
+
+[[package]]
 name = "quote"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -288,6 +294,7 @@ version = "0.1.0"
 dependencies = [
  "sdl2",
  "specs",
+ "vector2d",
 ]
 
 [[package]]
@@ -372,9 +379,18 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bd2fe26506023ed7b5e1e315add59d6f584c621d037f9368fea9cfb988f368c"
+checksum = "15c61ba63f9235225a22310255a29b806b907c9b8c964bcbd0a2c70f3f2deea7"
+
+[[package]]
+name = "vector2d"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0ec481eac35d50b7544c58613da9f823561612b0221e67bdf04823b4c6e1358"
+dependencies = [
+ "proc_vector2d",
+]
 
 [[package]]
 name = "version-compare"
